@@ -26,6 +26,7 @@
         </h1>
 		<form>
 			<input type="text" name="webrepl_url" id="url" value="ws://192.168.1.111:8266/" />
+			<input type="password" name="webrepl_pw" id="web_pw" value="123456" />
 			<input type="submit" id="button" value="Connect" onclick="button_click(); return false;" />
 		</form>
       </td>
@@ -51,6 +52,7 @@
             <td class="tabmin">&nbsp;</td>
             <td id="tab_xml" class="taboff">XML</td>
             <td class="tabmax">
+			  <button onclick="send_py();setTimeout(put_file, 1000);">direct send</button>
               <button id="trashButton" class="notext" title="...">
                 <img src='media/1x1.gif' class="trash icon21">
               </button>
@@ -71,7 +73,8 @@
               </button>
 			  <button title="Save as XML" onclick="save()">Save XML</button>
 			  <button title="get_files" onclick="get_file_namme()">Get file</button>
-			  <button onclick="term.emit('data','\3');">Test</button>
+			  <button onclick="term.emit('data','\3');ws.send('import os\r\n');ws.send('os.listdir()\r\n');">Test</button>
+			  <button onclick="term.emit('data','\3');ws.send('import machine\r\n');ws.send('machine.reset()\r\n');restart1()">Restart</button>
 			  <button id="runButton" class="notext primary" title="..."hidden="hidden">
                 <img src='media/1x1.gif' >
               </button>
@@ -96,13 +99,13 @@
   <!-- WEBREPL AREA-->
 <div style="background-color: rgb(0, 0, 0);position: static;">
 <div style="display:inline-block; vertical-align:top;">
-<div id="term" >
+<div id="term" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off" >
 </div>
 </div>
 <div id="file-boxes" style="display:inline-block; vertical-align:Bottom;position: static; width:230px;">
 
   <div class="file-box"hidden="hidden">
-    <input type="file" id="put-file-select"hidden="hidden";">
+    <input type="file" id="put-file-select"hidden="hidden";>
   </div>
 
   <div class="file-box"hidden="hidden">
@@ -524,9 +527,11 @@ var get_file_data = null;
 
 function calculate_size(win) {
     var cols = Math.max(80, Math.min(150, (win.innerWidth - 280) / 7)) | 0;
-    var rows = Math.max(24, Math.min(80, (win.innerHeight - 180) / 12)) | 0;
-	return [cols,9];
-    //return [cols, rows];
+    //var rows = Math.max(24, Math.min(80, (win.innerHeight - 180) / 12)) | 0;
+	var rows = Math.round(((win.innerHeight*0.2) / 12)-1);															
+	//return [cols,9];
+	//alert(document.getElementById('.terminal').element.style.height);
+    return [cols, rows];
 }
 
 (function() {
@@ -581,17 +586,21 @@ function prepare_for_connect() {
 function update_file_status(s) {
     document.getElementById('file-status').innerHTML = s;
 }
-
+	
+/////////////////////first message to esp8266///////////////////////////////////////////////////
 function connect(url) {
+	var data11="";
     ws = new WebSocket(url);
     ws.binaryType = 'arraybuffer';
     ws.onopen = function() {
+		ws.send(document.getElementById('web_pw').value+'\r');
         term.removeAllListeners('data');
         term.on('data', function(data) {
             // Pasted data from clipboard will likely contain
             // LF as EOL chars.
             data = data.replace(/\n/g, "\r");
             ws.send(data);
+			
         });
 
         term.on('title', function(title) {
@@ -678,6 +687,7 @@ function connect(url) {
                 }
             }
             term.write(event.data);
+			data11=new String(event.data+"");
         };
     };
 
@@ -816,6 +826,29 @@ document.getElementById('put-file-button').disabled = true;
   document.getElementById('get_filename').value=file;
   get_file(); return false;
   }
+  
+  function send_py(){
+	
+    put_file_name = "pkj.py";
+	var blob = new Blob([Blockly.Python.workspaceToCode()], {type: 'text/html'});
+	
+	var arrayBuffer;
+	var fileReader = new FileReader();
+	fileReader.onload = function() {
+		put_file_data = new Uint8Array(this.result);
+		document.getElementById('put-file-list').innerHTML = '' + escape(put_file_name) + ' - ' + put_file_data.length + ' bytes';
+        document.getElementById('put-file-button').disabled = false;
+	};
+	fileReader.readAsArrayBuffer(blob);
+	
+
+}
+	function restart1(){
+		document.getElementById('url').disabled=false;
+		document.getElementById('button').value='connect';
+		connected=false;
+		ws.onclose;
+	}
   
 </script>
 
